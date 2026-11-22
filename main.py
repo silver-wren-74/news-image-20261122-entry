@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """news-image-20261122 -- "Baltic Blaze".
 
-Draws a one-page newspaper front page summing up Sunday 22 November
-2026 world news, using only the Python standard library. The render is
-deterministic (no clock, no randomness, no network): two runs produce
-byte-identical output.
+Renders a one-page newspaper front page summing up Sunday 22 November
+2026 world news. Pure Python standard library, no network, no clock, no
+randomness: two runs write byte-identical PNGs.
 
 Usage: MAKEFUN_OUTPUT_DIR=out python3 main.py   (writes out/entry.png)
        python3 main.py                          (writes /output/entry.png)
@@ -27,133 +26,133 @@ DARK = (30, 30, 30)
 GOLD = (178, 126, 22)
 TEAL = (18, 96, 92)
 
-# 5x7 bitmap font: 7 rows of 5 bits, '#' = on.
+# 5x7 bitmap font. Every glyph is seven row bitmasks, bit 4 = leftmost
+# column, bit 0 = rightmost. A set bit paints one cell.
 FONT = {
-    "A": ("01110", "10001", "10001", "11111", "10001", "10001", "10001"),
-    "B": ("11110", "10001", "10001", "11110", "10001", "10001", "11110"),
-    "C": ("01110", "10001", "10000", "10000", "10000", "10001", "01110"),
-    "D": ("11110", "10001", "10001", "10001", "10001", "10001", "11110"),
-    "E": ("11111", "10000", "10000", "11110", "10000", "10000", "11111"),
-    "F": ("11111", "10000", "10000", "11110", "10000", "10000", "10000"),
-    "G": ("01110", "10001", "10000", "10111", "10001", "10001", "01111"),
-    "H": ("10001", "10001", "10001", "11111", "10001", "10001", "10001"),
-    "I": ("01110", "00100", "00100", "00100", "00100", "00100", "01110"),
-    "J": ("00111", "00010", "00010", "00010", "00010", "10010", "01100"),
-    "K": ("10001", "10010", "10100", "11000", "10100", "10010", "10001"),
-    "L": ("10000", "10000", "10000", "10000", "10000", "10000", "11111"),
-    "M": ("10001", "11011", "10101", "10101", "10001", "10001", "10001"),
-    "N": ("10001", "11001", "10101", "10011", "10001", "10001", "10001"),
-    "O": ("01110", "10001", "10001", "10001", "10001", "10001", "01110"),
-    "P": ("11110", "10001", "10001", "11110", "10000", "10000", "10000"),
-    "Q": ("01110", "10001", "10001", "10001", "10101", "10010", "01101"),
-    "R": ("11110", "10001", "10001", "11110", "10100", "10010", "10001"),
-    "S": ("01111", "10000", "10000", "01110", "00001", "00001", "11110"),
-    "T": ("11111", "00100", "00100", "00100", "00100", "00100", "00100"),
-    "U": ("10001", "10001", "10001", "10001", "10001", "10001", "01110"),
-    "V": ("10001", "10001", "10001", "10001", "10001", "01010", "00100"),
-    "W": ("10001", "10001", "10001", "10101", "10101", "10101", "01010"),
-    "X": ("10001", "10001", "01010", "00100", "01010", "10001", "10001"),
-    "Y": ("10001", "10001", "01010", "00100", "00100", "00100", "00100"),
-    "Z": ("11111", "00001", "00010", "00100", "01000", "10000", "11111"),
-    "0": ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
-    "1": ("00100", "01100", "00100", "00100", "00100", "00100", "01110"),
-    "2": ("01110", "10001", "00001", "00110", "01000", "10000", "11111"),
-    "3": ("11111", "00010", "00100", "00010", "00001", "10001", "01110"),
-    "4": ("00010", "00110", "01010", "10010", "11111", "00010", "00010"),
-    "5": ("11111", "10000", "11110", "00001", "00001", "10001", "01110"),
-    "6": ("00110", "01000", "10000", "11110", "10001", "10001", "01110"),
-    "7": ("11111", "00001", "00010", "00100", "01000", "01000", "01000"),
-    "8": ("01110", "10001", "10001", "01110", "10001", "10001", "01110"),
-    "9": ("01110", "10001", "10001", "01111", "00001", "00010", "01100"),
-    ".": (".....", ".....", ".....", ".....", ".....", ".##..", ".##.."),
-    ",": (".....", ".....", ".....", ".....", ".##..", ".#...", "#...."),
-    ":": (".....", ".##..", ".##..", ".....", ".##..", ".##..", "....."),
-    ";": (".....", ".##..", ".##..", ".....", ".##..", ".#...", "#...."),
-    "'": ("..#..", "..#..", ".#...", ".....", ".....", ".....", "....."),
-    "-": (".....", ".....", ".....", ".###.", ".....", ".....", "....."),
-    "!": ("..#..", "..#..", "..#..", "..#..", "..#..", ".....", "..#.."),
-    "?": (".###.", "#...#", "....#", "...#.", "..#..", ".....", "..#.."),
-    "%": ("##..#", "##.#.", "....#", "...#.", "..#..", ".#.#.", "#..##"),
-    "(": ("...#.", "..#..", ".#...", ".#...", ".#...", "..#..", "...#."),
-    ")": (".#...", "..#..", "...#.", "...#.", "...#.", "..#..", ".#..."),
-    "/": ("....#", "...#.", "...#.", "..#..", ".#...", ".#...", "#...."),
-    "&": (".##..", "#..#.", "#.#..", ".#...", "#.#.#", "#..#.", ".##.#"),
-    "+": (".....", "..#..", "..#..", "#####", "..#..", "..#..", "....."),
-    "=": (".....", ".....", "#####", ".....", "#####", ".....", "....."),
-    '"': (".#.#.", ".#.#.", ".....", ".....", ".....", ".....", "....."),
-    "$": ("..#..", ".####", "#.#..", ".###.", "..#.#", "####.", "..#.."),
-    "#": (".#.#.", ".#.#.", "#####", ".#.#.", "#####", ".#.#.", ".#.#."),
-    "*": (".....", "#.#.#", ".###.", "#.#.#", ".....", ".....", "....."),
-    "_": (".....", ".....", ".....", ".....", ".....", ".....", "#####"),
-    "@": (".###.", "#...#", "#.###", "#.#.#", "#.##.", "#....", ".###."),
-    " ": (".....", ".....", ".....", ".....", ".....", ".....", "....."),
+    "A": (0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001),
+    "B": (0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110),
+    "C": (0b01110, 0b10001, 0b10000, 0b10000, 0b10000, 0b10001, 0b01110),
+    "D": (0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110),
+    "E": (0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111),
+    "F": (0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b10000),
+    "G": (0b01110, 0b10001, 0b10000, 0b10111, 0b10001, 0b10001, 0b01111),
+    "H": (0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001),
+    "I": (0b01110, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110),
+    "J": (0b00111, 0b00010, 0b00010, 0b00010, 0b00010, 0b10010, 0b01100),
+    "K": (0b10001, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010, 0b10001),
+    "L": (0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111),
+    "M": (0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001),
+    "N": (0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001, 0b10001),
+    "O": (0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110),
+    "P": (0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000),
+    "Q": (0b01110, 0b10001, 0b10001, 0b10001, 0b10101, 0b10010, 0b01101),
+    "R": (0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001),
+    "S": (0b01111, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b11110),
+    "T": (0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100),
+    "U": (0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110),
+    "V": (0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100),
+    "W": (0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b10101, 0b01010),
+    "X": (0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001),
+    "Y": (0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100),
+    "Z": (0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111),
+    "0": (0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110),
+    "1": (0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110),
+    "2": (0b01110, 0b10001, 0b00001, 0b00110, 0b01000, 0b10000, 0b11111),
+    "3": (0b11111, 0b00010, 0b00100, 0b00010, 0b00001, 0b10001, 0b01110),
+    "4": (0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010),
+    "5": (0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110),
+    "6": (0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110),
+    "7": (0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000),
+    "8": (0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110),
+    "9": (0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100),
+    ".": (0, 0, 0, 0, 0, 0b01100, 0b01100),
+    ",": (0, 0, 0, 0, 0b01100, 0b01000, 0b10000),
+    ":": (0, 0b01100, 0b01100, 0, 0b01100, 0b01100, 0),
+    ";": (0, 0b01100, 0b01100, 0, 0b01100, 0b01000, 0b10000),
+    "'": (0b00100, 0b00100, 0b01000, 0, 0, 0, 0),
+    "-": (0, 0, 0, 0b01110, 0, 0, 0),
+    "!": (0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0, 0b00100),
+    "?": (0b01110, 0b10001, 0b00001, 0b00100, 0b00100, 0, 0b00100),
+    "%": (0b11001, 0b11010, 0b00001, 0b00100, 0b00100, 0b01010, 0b10011),
+    "(": (0b00010, 0b00100, 0b01000, 0b01000, 0b01000, 0b00100, 0b00010),
+    ")": (0b01000, 0b00100, 0b00010, 0b00010, 0b00010, 0b00100, 0b01000),
+    "/": (0b00001, 0b00100, 0b00100, 0b00100, 0b01000, 0b01000, 0b10000),
+    "&": (0b01100, 0b10010, 0b10100, 0b01000, 0b10101, 0b10010, 0b01101),
+    "+": (0, 0b00100, 0b00100, 0b11111, 0b00100, 0b00100, 0),
+    "=": (0, 0, 0b11111, 0, 0b11111, 0, 0),
+    '"': (0b01010, 0b01010, 0, 0, 0, 0, 0),
+    "$": (0b00100, 0b01111, 0b10100, 0b01110, 0b00101, 0b11110, 0b00100),
+    "#": (0b01010, 0b01010, 0b11111, 0b01010, 0b11111, 0b01010, 0b01010),
+    "*": (0, 0b10101, 0b01110, 0b10101, 0, 0, 0),
+    "_": (0, 0, 0, 0, 0, 0, 0b11111),
+    "@": (0b01110, 0b10001, 0b10111, 0b10101, 0b10110, 0b10000, 0b01110),
+    " ": (0, 0, 0, 0, 0, 0, 0),
 }
 
 
-class Canvas:
-    """Minimal RGB rasteriser: pixels, rects, lines, circles, bitmap text."""
+class Sheet:
+    """Tiny RGB rasteriser: dots, boxes, segments, discs, bitmap text."""
 
     def __init__(self, w, h, bg):
         self.w, self.h = w, h
-        self.px = bytearray(bg * (w * h))
+        self.buf = bytearray(bytes(bg) * (w * h))
 
-    def put(self, x, y, color):
+    def dot(self, x, y, col):
         if 0 <= x < self.w and 0 <= y < self.h:
             i = (y * self.w + x) * 3
-            self.px[i:i + 3] = bytes(color)
+            self.buf[i:i + 3] = bytes(col)
 
-    def fill(self, x0, y0, x1, y1, color):
-        x0 = max(0, x0)
-        y0 = max(0, y0)
-        x1 = min(self.w, x1)
-        y1 = min(self.h, y1)
-        for y in range(y0, y1):
-            base = (y * self.w + x0) * 3
-            row = bytes(color) * (x1 - x0)
-            self.px[base:base + len(row)] = row
+    def box(self, ax, ay, bx, by, col):
+        ax, ay = max(0, ax), max(0, ay)
+        bx, by = min(self.w, bx), min(self.h, by)
+        for yy in range(ay, by):
+            start = (yy * self.w + ax) * 3
+            span = bytes(col) * (bx - ax)
+            self.buf[start:start + len(span)] = span
 
-    def rect(self, x0, y0, x1, y1, color, t=1):
-        self.fill(x0, y0, x1, y0 + t, color)
-        self.fill(x0, y1 - t, x1, y1, color)
-        self.fill(x0, y0, x0 + t, y1, color)
-        self.fill(x1 - t, y0, x1, y1, color)
+    def frame(self, ax, ay, bx, by, col, t=1):
+        self.box(ax, ay, bx, ay + t, col)
+        self.box(ax, by - t, bx, by, col)
+        self.box(ax, ay, ax + t, by, col)
+        self.box(bx - t, ay, bx, by, col)
 
-    def hline(self, x0, x1, y, color, t=1):
-        self.fill(x0, y, x1, y + t, color)
+    def hline(self, ax, bx, y, col, t=1):
+        self.box(ax, y, bx, y + t, col)
 
-    def vline(self, x, y0, y1, color, t=1):
-        self.fill(x, y0, x + t, y1, color)
+    def vline(self, x, ay, by, col, t=1):
+        self.box(x, ay, x + t, by, col)
 
-    def line(self, x0, y0, x1, y1, color):
-        dx = abs(x1 - x0)
-        dy = -abs(y1 - y0)
-        sx = 1 if x0 < x1 else -1
-        sy = 1 if y0 < y1 else -1
+    def seg(self, ax, ay, bx, by, col):
+        # Bresenham.
+        dx = abs(bx - ax)
+        dy = -abs(by - ay)
+        sx = 1 if ax < bx else -1
+        sy = 1 if ay < by else -1
         err = dx + dy
         while True:
-            self.put(x0, y0, color)
-            if x0 == x1 and y0 == y1:
+            self.dot(ax, ay, col)
+            if ax == bx and ay == by:
                 return
             e2 = 2 * err
             if e2 >= dy:
                 err += dy
-                x0 += sx
+                ax += sx
             if e2 <= dx:
                 err += dx
-                y0 += sy
+                ay += sy
 
-    def circle(self, cx, cy, r, color, fill=False):
-        if fill:
-            for y in range(-r, r + 1):
-                half = int((r * r - y * y) ** 0.5)
-                self.fill(cx - half, cy + y, cx + half + 1, cy + y + 1, color)
+    def disc(self, cx, cy, r, col, solid=False):
+        if solid:
+            for yy in range(-r, r + 1):
+                half = int((r * r - yy * yy) ** 0.5)
+                self.box(cx - half, cy + yy, cx + half + 1, cy + yy + 1, col)
             return
         x, y, d = 0, r, 3 - 2 * r
         while x <= y:
             for px, py in ((cx + x, cy + y), (cx - x, cy + y), (cx + x, cy - y),
                            (cx - x, cy - y), (cx + y, cy + x), (cx - y, cy + x),
                            (cx + y, cy - x), (cx - y, cy - x)):
-                self.put(px, py, color)
+                self.dot(px, py, col)
             if d < 0:
                 d += 4 * x + 6
             else:
@@ -161,41 +160,43 @@ class Canvas:
                 y -= 1
             x += 1
 
-    def arc(self, cx, cy, r, a0, a1, color):
-        steps = max(8, int(r * 1.2))
-        for i in range(steps + 1):
-            a = a0 + (a1 - a0) * i / steps
-            self.put(int(cx + r * math.cos(a)), int(cy + r * math.sin(a)), color)
+    def arc(self, cx, cy, r, a0, a1, col):
+        n = max(8, int(r * 1.2))
+        for i in range(n + 1):
+            a = a0 + (a1 - a0) * i / n
+            self.dot(int(cx + r * math.cos(a)), int(cy + r * math.sin(a)), col)
 
-    def text(self, x, y, s, color, scale=1):
+    def glyph(self, x, y, ch, col, s=1):
+        rows = FONT.get(ch, FONT[" "])
+        for gy, bits in enumerate(rows):
+            for gx in range(5):
+                if (bits >> (4 - gx)) & 1:
+                    self.box(x + gx * s, y + gy * s,
+                             x + (gx + 1) * s, y + (gy + 1) * s, col)
+
+    def text(self, x, y, s, col, scale=1):
         s = s.upper()
         cx = x
         for ch in s:
-            glyph = FONT.get(ch, FONT[" "])
-            for gy, row in enumerate(glyph):
-                for gx, bit in enumerate(row):
-                    if bit in ("1", "#"):
-                        self.fill(cx + gx * scale, y + gy * scale,
-                                  cx + (gx + 1) * scale, y + (gy + 1) * scale,
-                                  color)
+            self.glyph(cx, y, ch, col, scale)
             cx += 6 * scale
         return cx
 
-    def text_w(self, s, scale=1):
+    def measure(self, s, scale=1):
         return len(s) * 6 * scale - scale
 
-    def text_center(self, y, s, color, scale=1, x0=0, x1=None):
+    def centred(self, y, s, col, scale=1, x0=0, x1=None):
         if x1 is None:
             x1 = self.w
-        w = self.text_w(s, scale)
-        self.text(x0 + (x1 - x0 - w) // 2, y, s, color, scale)
+        w = self.measure(s, scale)
+        self.text(x0 + (x1 - x0 - w) // 2, y, s, col, scale)
 
-    def wrap(self, s, max_w, scale=1):
+    def wrap(self, s, maxw, scale=1):
         words = s.upper().split(" ")
         lines, cur = [], ""
         for word in words:
             trial = (cur + " " + word).strip()
-            if self.text_w(trial, scale) <= max_w or not cur:
+            if self.measure(trial, scale) <= maxw or not cur:
                 cur = trial
             else:
                 lines.append(cur)
@@ -204,149 +205,143 @@ class Canvas:
             lines.append(cur)
         return lines
 
-    def para(self, x, y, s, color, scale, max_w, leading=None):
+    def para(self, x, y, s, col, scale, maxw, leading=None):
         if leading is None:
             leading = 9 * scale + 2
-        for line in self.wrap(s, max_w, scale):
-            self.text(x, y, line, color, scale)
+        for line in self.wrap(s, maxw, scale):
+            self.text(x, y, line, col, scale)
             y += leading
         return y
 
 
-def write_png(path, canvas):
-    raw = bytearray()
-    stride = canvas.w * 3
-    for y in range(canvas.h):
-        raw.append(0)
-        raw += canvas.px[y * stride:(y + 1) * stride]
-    comp = zlib.compress(bytes(raw), 9)
+def save_png(path, sheet):
+    rows = bytearray()
+    step = sheet.w * 3
+    for yy in range(sheet.h):
+        rows.append(0)
+        rows += sheet.buf[yy * step:(yy + 1) * step]
+    blob = zlib.compress(bytes(rows), 9)
 
-    def chunk(tag, data):
-        c = struct.pack(">I", len(data)) + tag + data
-        return c + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+    def part(tag, payload):
+        head = struct.pack(">I", len(payload)) + tag + payload
+        return head + struct.pack(">I", zlib.crc32(tag + payload) & 0xFFFFFFFF)
 
-    ihdr = struct.pack(">IIBBBBB", canvas.w, canvas.h, 8, 2, 0, 0, 0)
+    ihdr = struct.pack(">IIBBBBB", sheet.w, sheet.h, 8, 2, 0, 0, 0)
     png = b"\x89PNG\r\n\x1a\n"
-    png += chunk(b"IHDR", ihdr)
-    png += chunk(b"IDAT", comp)
-    png += chunk(b"IEND", b"")
+    png += part(b"IHDR", ihdr)
+    png += part(b"IDAT", blob)
+    png += part(b"IEND", b"")
     with open(path, "wb") as f:
         f.write(png)
     return len(png)
 
 
 # ---------------------------------------------------------------------------
-# Pictograms: small geometric drawings, one per story.
+# Pictograms: one small geometric drawing per story.
 # ---------------------------------------------------------------------------
 
-def pic_ship(c, x, y, color):
-    # Hull, bridge, mast, and flame tongues above the deck.
-    c.line(x, y + 34, x + 66, y + 34, color)
-    c.line(x, y + 34, x + 8, y + 46, color)
-    c.line(x + 66, y + 34, x + 58, y + 46, color)
-    c.line(x + 8, y + 46, x + 58, y + 46, color)
-    c.fill(x + 40, y + 16, x + 56, y + 34, color)
-    c.vline(x + 18, y + 6, y + 34, color, 2)
-    c.fill(x + 20, y + 8, x + 34, y + 14, RED)
-    for dx, hgt in ((-6, 12), (0, 18), (6, 12)):
-        c.line(x + 48 + dx, y + 12, x + 48 + dx, y + 12 - hgt, RED)
-    c.line(x - 4, y + 54, x + 70, y + 54, BLUE)
-    c.line(x + 2, y + 60, x + 64, y + 60, BLUE)
+def draw_ship(cv, x, y, col):
+    # Hull, wheelhouse, mast with pennant, flame tongues, sea lines.
+    cv.seg(x, y + 34, x + 66, y + 34, col)
+    cv.seg(x, y + 34, x + 8, y + 46, col)
+    cv.seg(x + 66, y + 34, x + 58, y + 46, col)
+    cv.seg(x + 8, y + 46, x + 58, y + 46, col)
+    cv.box(x + 40, y + 16, x + 56, y + 34, col)
+    cv.vline(x + 18, y + 6, y + 34, col, 2)
+    cv.box(x + 20, y + 8, x + 34, y + 14, RED)
+    for off, tall in ((-6, 12), (0, 18), (6, 12)):
+        cv.seg(x + 48 + off, y + 12, x + 48 + off, y + 12 - tall, RED)
+    cv.seg(x - 4, y + 54, x + 70, y + 54, BLUE)
+    cv.seg(x + 2, y + 60, x + 64, y + 60, BLUE)
 
 
-def pic_globe(c, x, y, r, color):
-    c.circle(x, y, r, color)
-    c.arc(x, y, r - 2, -1.2, 1.2, color)
-    c.arc(x, y, r - 2, 1.9, 4.3, color)
-    c.hline(x - r, x + r, y, color)
-    c.arc(x, y, r // 2, -1.57, 1.57, color)
-    c.arc(x, y, r // 2, 1.57, 4.71, color)
-    c.line(x - r + 6, y - r + 8, x + r - 8, y + r - 6, color)
+def draw_globe(cv, x, y, r, col):
+    cv.disc(x, y, r, col)
+    cv.arc(x, y, r - 2, -1.2, 1.2, col)
+    cv.arc(x, y, r - 2, 1.9, 4.3, col)
+    cv.hline(x - r, x + r, y, col)
+    cv.arc(x, y, r // 2, -1.57, 1.57, col)
+    cv.arc(x, y, r // 2, 1.57, 4.71, col)
+    cv.seg(x - r + 6, y - r + 8, x + r - 8, y + r - 6, col)
 
 
-def pic_tanker(c, x, y, color):
-    c.fill(x, y + 26, x + 66, y + 40, color)
-    c.fill(x + 46, y + 12, x + 58, y + 26, color)
-    c.line(x + 8, y + 8, x + 20, y + 20, RED)
-    c.line(x + 20, y + 8, x + 8, y + 20, RED)
-    c.line(x + 28, y + 8, x + 40, y + 20, RED)
-    c.line(x + 40, y + 8, x + 28, y + 20, RED)
+def draw_tanker(cv, x, y, col):
+    cv.box(x, y + 26, x + 66, y + 40, col)
+    cv.box(x + 46, y + 12, x + 58, y + 26, col)
+    for ax, ay, bx, by in ((8, 8, 20, 20), (20, 8, 8, 20),
+                           (28, 8, 40, 20), (40, 8, 28, 20)):
+        cv.seg(x + ax, y + ay, x + bx, y + by, RED)
     for k in range(3):
         yy = y + 48 + k * 6
-        c.line(x + k * 8, yy, x + 22 + k * 8, yy, BLUE)
-        c.line(x + 34 + k * 6, yy, x + 56 + k * 6, yy, BLUE)
+        cv.seg(x + k * 8, yy, x + 22 + k * 8, yy, BLUE)
+        cv.seg(x + 34 + k * 6, yy, x + 56 + k * 6, yy, BLUE)
 
 
-def pic_flags(c, x, y, color):
-    # Two crossed flagpoles with small pennants.
-    c.line(x + 8, y + 44, x + 30, y + 4, color)
-    c.line(x + 58, y + 44, x + 36, y + 4, color)
-    c.fill(x + 30, y + 4, x + 52, y + 14, RED)
-    c.fill(x + 14, y + 4, x + 36, y + 14, BLUE)
-    c.hline(x + 4, x + 62, y + 46, color, 2)
+def draw_flags(cv, x, y, col):
+    # Two crossed poles with pennants, on a shared base line.
+    cv.seg(x + 8, y + 44, x + 30, y + 4, col)
+    cv.seg(x + 58, y + 44, x + 36, y + 4, col)
+    cv.box(x + 30, y + 4, x + 52, y + 14, RED)
+    cv.box(x + 14, y + 4, x + 36, y + 14, BLUE)
+    cv.hline(x + 4, x + 62, y + 46, col, 2)
 
 
-def pic_target(c, x, y, r, color):
-    c.circle(x, y, r, color)
-    c.circle(x, y, r - 10, color)
-    c.circle(x, y, r - 20, RED, fill=True)
-    c.line(x - r - 8, y, x + r + 8, y, color)
-    c.line(x, y - r - 8, x, y + r + 8, color)
+def draw_target(cv, x, y, r, col):
+    cv.disc(x, y, r, col)
+    cv.disc(x, y, r - 10, col)
+    cv.disc(x, y, r - 20, RED, solid=True)
+    cv.seg(x - r - 8, y, x + r + 8, y, col)
+    cv.seg(x, y - r - 8, x, y + r + 8, col)
 
 
-def pic_mic(c, x, y, color):
-    c.circle(x + 20, y + 14, 12, color)
-    c.fill(x + 14, y + 12, x + 26, y + 30, color)
-    c.arc(x + 20, y + 22, 16, 0.3, 2.8, color)
-    c.vline(x + 20, y + 38, y + 48, color, 2)
-    c.hline(x + 10, x + 30, y + 48, color, 2)
+def draw_mic(cv, x, y, col):
+    cv.disc(x + 20, y + 14, 12, col)
+    cv.box(x + 14, y + 12, x + 26, y + 30, col)
+    cv.arc(x + 20, y + 22, 16, 0.3, 2.8, col)
+    cv.vline(x + 20, y + 38, y + 48, col, 2)
+    cv.hline(x + 10, x + 30, y + 48, col, 2)
 
 
-def pic_ballot(c, x, y, color):
-    c.fill(x + 6, y + 18, x + 60, y + 52, color)
-    c.fill(x + 6, y + 18, x + 60, y + 26, LIGHT)
-    c.rect(x + 6, y + 18, x + 60, y + 52, color, 2)
-    c.fill(x + 28, y + 10, x + 38, y + 18, PAPER)
-    c.line(x + 18, y + 2, x + 30, y + 16, RED)
-    c.line(x + 30, y + 16, x + 48, y - 6, RED)
-    c.text(x + 14, y + 32, "VOTE", PAPER, 1)
+def draw_ballot(cv, x, y, col):
+    cv.box(x + 6, y + 18, x + 60, y + 52, col)
+    cv.box(x + 6, y + 18, x + 60, y + 26, LIGHT)
+    cv.frame(x + 6, y + 18, x + 60, y + 52, col, 2)
+    cv.box(x + 28, y + 10, x + 38, y + 18, PAPER)
+    cv.seg(x + 18, y + 2, x + 30, y + 16, RED)
+    cv.seg(x + 30, y + 16, x + 48, y - 6, RED)
+    cv.text(x + 14, y + 32, "VOTE", PAPER, 1)
 
 
-def pic_bridge(c, x, y, color):
-    c.line(x, y + 40, x + 66, y + 40, color)
-    c.line(x + 6, y + 40, x + 20, y + 8, color)
-    c.line(x + 60, y + 40, x + 46, y + 8, color)
-    c.vline(x + 20, y + 8, y + 40, color, 2)
-    c.vline(x + 46, y + 8, y + 40, color, 2)
-    c.line(x + 20, y + 8, x + 46, y + 8, color)
+def draw_bridge(cv, x, y, col):
+    cv.seg(x, y + 40, x + 66, y + 40, col)
+    cv.seg(x + 6, y + 40, x + 20, y + 8, col)
+    cv.seg(x + 60, y + 40, x + 46, y + 8, col)
+    cv.vline(x + 20, y + 8, y + 40, col, 2)
+    cv.vline(x + 46, y + 8, y + 40, col, 2)
+    cv.seg(x + 20, y + 8, x + 46, y + 8, col)
     for bx in (26, 33, 40):
-        c.vline(x + bx, y + 14, y + 40, color, 1)
-    c.line(x + 2, y + 50, x + 64, y + 50, TEAL)
-    c.line(x + 8, y + 56, x + 58, y + 56, TEAL)
+        cv.vline(x + bx, y + 14, y + 40, col, 1)
+    cv.seg(x + 2, y + 50, x + 64, y + 50, TEAL)
+    cv.seg(x + 8, y + 56, x + 58, y + 56, TEAL)
 
 
-PICS = {"ship": pic_ship, "globe": pic_globe, "tanker": pic_tanker,
-        "flags": pic_flags, "target": pic_target, "mic": pic_mic,
-        "ballot": pic_ballot, "bridge": pic_bridge}
-
-
-def draw_pic(c, kind, x, y, color):
+def draw_pic(cv, kind, x, y, col):
     if kind == "ship":
-        pic_ship(c, x, y, color)
+        draw_ship(cv, x, y, col)
     elif kind == "globe":
-        pic_globe(c, x + 30, y + 30, 28, color)
+        draw_globe(cv, x + 30, y + 30, 28, col)
     elif kind == "tanker":
-        pic_tanker(c, x, y, color)
+        draw_tanker(cv, x, y, col)
     elif kind == "flags":
-        pic_flags(c, x, y, color)
+        draw_flags(cv, x, y, col)
     elif kind == "target":
-        pic_target(c, x + 32, y + 30, 26, color)
+        draw_target(cv, x + 32, y + 30, 26, col)
     elif kind == "mic":
-        pic_mic(c, x + 12, y + 6, color)
+        draw_mic(cv, x + 12, y + 6, col)
     elif kind == "ballot":
-        pic_ballot(c, x, y + 4, color)
+        draw_ballot(cv, x, y + 4, col)
     elif kind == "bridge":
-        pic_bridge(c, x, y + 6, color)
+        draw_bridge(cv, x, y + 6, col)
 
 
 # ---------------------------------------------------------------------------
@@ -400,61 +395,62 @@ STORIES = [
 ]
 
 
-def draw_panel(c, x0, y0, x1, y1, story, hscale=2, dscale=1):
+def panel(cv, ax, ay, bx, by, story, hs=2, ds=1):
     kicker, headline, deck, pic = story
-    c.rect(x0, y0, x1, y1, GREY)
-    ix = x1 - 92
-    iy = y0 + 14
-    draw_pic(c, pic, ix, iy, BLUE)
-    text_w = (ix - 8) - (x0 + 12)
-    y = y0 + 12
-    c.text(x0 + 12, y, kicker, RED, 1)
-    y += 14
-    for line in c.wrap(headline, text_w, hscale):
-        c.text(x0 + 12, y, line, INK, hscale)
-        y += 9 * hscale + 2
-    y += 4
-    y = c.para(x0 + 12, y, deck, INK, dscale, text_w)
+    cv.frame(ax, ay, bx, by, GREY)
+    ix, iy = bx - 92, ay + 14
+    draw_pic(cv, pic, ix, iy, BLUE)
+    col_w = (ix - 8) - (ax + 12)
+    yy = ay + 12
+    cv.text(ax + 12, yy, kicker, RED, 1)
+    yy += 14
+    for line in cv.wrap(headline, col_w, hs):
+        cv.text(ax + 12, yy, line, INK, hs)
+        yy += 9 * hs + 2
+    yy += 4
+    # The deck wraps inside the text column too, so it never runs under
+    # the pictogram in the panel's top-right corner.
+    cv.para(ax + 12, yy, deck, INK, ds, col_w)
 
 
-def draw_page():
-    c = Canvas(W, H, PAPER)
+def compose():
+    cv = Sheet(W, H, PAPER)
     # Masthead.
-    c.text_center(26, "THE WORLD IN ONE PAGE", INK, 4)
-    c.hline(24, 1000, 78, INK, 2)
-    c.text_center(88, "SUNDAY, 22 NOVEMBER 2026", RED, 2)
-    c.text_center(112, "THE DAY'S NEWS - AS REPORTED TODAY", GREY, 1)
-    c.hline(24, 1000, 134, RED, 3)
+    cv.centred(26, "THE WORLD IN ONE PAGE", INK, 4)
+    cv.hline(24, 1000, 78, INK, 2)
+    cv.centred(88, "SUNDAY, 22 NOVEMBER 2026", RED, 2)
+    cv.centred(112, "THE DAY'S NEWS - AS REPORTED TODAY", GREY, 1)
+    cv.hline(24, 1000, 134, RED, 3)
     # Lead story, full width.
-    draw_panel(c, 24, 146, 1000, 322, STORIES[0], hscale=3, dscale=2)
+    panel(cv, 24, 146, 1000, 322, STORIES[0], hs=3, ds=2)
     # Row two: two panels.
-    draw_panel(c, 24, 334, 506, 514, STORIES[1])
-    draw_panel(c, 518, 334, 1000, 514, STORIES[2])
+    panel(cv, 24, 334, 506, 514, STORIES[1])
+    panel(cv, 518, 334, 1000, 514, STORIES[2])
     # Row three: two panels.
-    draw_panel(c, 24, 526, 506, 706, STORIES[3])
-    draw_panel(c, 518, 526, 1000, 706, STORIES[4])
+    panel(cv, 24, 526, 506, 706, STORIES[3])
+    panel(cv, 518, 526, 1000, 706, STORIES[4])
     # Row four: three panels.
-    draw_panel(c, 24, 718, 348, 884, STORIES[5])
-    draw_panel(c, 360, 718, 684, 884, STORIES[6])
-    draw_panel(c, 696, 718, 1000, 884, STORIES[7])
+    panel(cv, 24, 718, 348, 884, STORIES[5])
+    panel(cv, 360, 718, 684, 884, STORIES[6])
+    panel(cv, 696, 718, 1000, 884, STORIES[7])
     # Tonight strip.
-    c.fill(24, 896, 1000, 950, DARK)
-    c.text(40, 912, "TONIGHT: LAS VEGAS GP UNDER THE LIGHTS - NORRIS ON POLE, "
+    cv.box(24, 896, 1000, 950, DARK)
+    cv.text(40, 912, "TONIGHT: LAS VEGAS GP UNDER THE LIGHTS - NORRIS ON POLE, "
             "VERSTAPPEN 2ND", PAPER, 1)
-    c.text(40, 928, "AUSTRALIA END ENGLAND'S SEVEN-MATCH T20 WINNING STREAK",
+    cv.text(40, 928, "AUSTRALIA END ENGLAND'S SEVEN-MATCH T20 WINNING STREAK",
             PAPER, 1)
     # Footer.
-    c.hline(24, 1000, 962, GREY)
-    c.text_center(972, "SOURCES: REUTERS, CNN, BBC, TIMES OF INDIA - "
-                  "ALL STORIES AS REPORTED ON 22 NOVEMBER 2026", GREY, 1)
-    return c
+    cv.hline(24, 1000, 962, GREY)
+    cv.centred(972, "SOURCES: REUTERS, CNN, BBC, TIMES OF INDIA - "
+               "ALL STORIES AS REPORTED ON 22 NOVEMBER 2026", GREY, 1)
+    return cv
 
 
 def main():
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, "entry.png")
-    size = write_png(path, draw_page())
+    size = save_png(path, compose())
     print(f"wrote {path} ({size} bytes)")
 
 
